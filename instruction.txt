@@ -1,0 +1,10 @@
+
+People and general objects
+python securtyai.py --input rtsp://admin:PCHHCL@192.168.1.155 --framestart 10 --framelimit 0 --config cfg/yolov3-tiny.cfg --weights yolov3-tiny.weights --classes cfg/yolov3.txt
+
+SA Numberplates
+python securtyai.py --input rtsp://192.168.1.243/live/ch00_1 --framestart 10 --framelimit 0 --config SANumberplatyes/detect.cfg --weights SANumberplates/SANumberplates.weights --classes SANumberplates/coco.names
+
+
+TO CONNET TO OUTSIDE CAMERA
+rtsp://admin:PCHHCL@192.168.1.155
