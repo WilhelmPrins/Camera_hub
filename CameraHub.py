@@ -10,6 +10,17 @@ import sys
 from camModules.machine import Machine
 
 
+def recta(x_list, w_list, y_list, h_list):
+    for i in x_list:
+        current = x_list.index(i)
+        cv2.rectangle(frame,
+                      (i, y_list[current]),
+                      (i + w_list[current], y_list[current] + h_list[current]),
+                      (255, 0, 0),
+                      2)
+    return frame
+
+
 def car_detect(frame):
     images, ids, x_list, w_list, y_list, h_list = machine.detect(frame, "big")
     return images, ids, x_list, w_list, y_list, h_list
@@ -22,21 +33,16 @@ def rescale_frame(frame, percent=75):
     return cv2.resize(frame, dim, interpolation =cv2.INTER_AREA)
 
 
-def numberplate_detect(images, j, i, frame_no):
-    current = images.index(i)
-    if ids[current] != "Numplate":
-        numberplates, id = machine.detect(i, "number")
-        #show_image(numberplates, "title")
-        return numberplates, id
-    else:
-        return [], []
+def numberplate_detect(image):
+    images, ids, x_list, w_list, y_list, h_list = machine.detect(image, "number")
+    return images, ids, x_list, w_list, y_list, h_list
 
 
-def ocr_detect(numberplates, numberpl, frame_no):
+def ocr_detect(numberplates, numberpl):
     total = 0
     current = numberplates.index(numberpl)
     #show_image(numberplates[0], "numberplate")
-    cropped, ids, confidences = machine.detect(numberpl, "ocr")
+    [], ids, confidences, [], [], []  = machine.detect(numberpl, "ocr")
     for i in confidences:
         total += i
     if len(confidences) > 0:
@@ -58,7 +64,7 @@ try:
     logging.info('Openining ' + config['DEVICES']['Camera'])
 
     sys._excepthook = sys.excepthook
-    cap = cv2.VideoCapture(config['DEVICES']['Camera'])
+    cap = cv2.VideoCapture(config['DEVICES']['Video'])
     logging.info('Stream open ')
     frame_counter = 0
     recordtimer = 0
@@ -71,17 +77,18 @@ try:
             ret, frame = cap.read()
             if ret:
                 if type(frame) != "NoneType":
-                    rescale_frame(frame, 50)
+                    frame = rescale_frame(frame, 50)
                     images, ids, x_list, w_list, y_list, h_list = car_detect(frame)
-                    for i in x_list:
-                        current = x_list.index(i)
-                        cv2.rectangle(frame,
-                                      (i,y_list[current]),
-                                      (i + w_list[current], y_list[current] + h_list[current]),
-                                      (255,0,0),
-                                      2)
+                    frame = recta(x_list, w_list, y_list, h_list)
+                    n_images, n_ids, n_x_list, n_w_list, n_y_list, n_h_list = numberplate_detect(frame)
+                    frame = recta(n_x_list, n_w_list, n_y_list, n_h_list)
+                    if len(n_images) > 0:
+                        for plates in n_images:
+                            result, average = ocr_detect(n_images, plates)
+                            print(result)
+
                     cv2.imshow("Frame", frame)
-                    if cv2.waitKey(50) & 0xFF == ord('q'):
+                    if cv2.waitKey(1) & 0xFF == ord('q'):
                         break
 
 
