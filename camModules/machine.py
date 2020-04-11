@@ -69,6 +69,7 @@ class Machine:
                 weights = config["AI"]["Weights_number"]
                 configuration = config["AI"]["Config_number"]
                 net = cv2.dnn.readNet(weights, configuration)
+                #image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
                 with open(config['AI']['Classes_number'], 'r') as f:
                     classes = [line.strip() for line in f.readlines()]
             elif state == "ocr":
