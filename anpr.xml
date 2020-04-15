@@ -1,0 +1,18 @@
+<EventNotificationAlert version="2.0" xmlns="http://www.hikvision.com/ver20/XMLSchema">
+<ipAddress>192.168.1.64</ipAddress>
+<protocolType>HTTP</protocolType>
+<macAddress>f8:4d:fc:6b:e2:b7</macAddress>
+<channelID>1</channelID>
+<dateTime>##DATETIME##</dateTime>
+<eventType>ANPR</eventType>
+<eventState>active</eventState>
+<eventDescription>ANPR alarm</eventDescription>
+<ANPR>
+<licensePlate>##NUMBERPLATE##</licensePlate>
+<line>1</line>
+<direction>reverse</direction>
+<confidenceLevel>99</confidenceLevel>
+<vehicleType>vehicle</vehicleType>
+<originalLicensePlate>##NUMBERPLATE##</originalLicensePlate>
+</ANPR>
+</EventNotificationAlert>

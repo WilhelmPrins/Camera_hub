@@ -3,6 +3,9 @@ from collections import defaultdict
 from datetime import datetime
 import time
 import threading
+import upload
+import configparser
+import xml.etree.ElementTree as ET
 
 class aiTrack:
 
@@ -15,50 +18,58 @@ class aiTrack:
 
     def increaseCount(self):
         self.count+=1
+        self.createdTime = datetime.now()
 
-class manageUploads:
-
-    def upload(self,aiTrack):
+    def upload(self):
         print ("aitrack uploaded")
+        data = upload.UploadMetaData(config["Upload"]["Camera_key"])
+        code, meta = data.send(self.numberplate, self.picVehicle, self.picNumberplate)
+        print(f"{self.numberplate} uploaded. Code {code}")
+        #print(meta)
+
+
+
 
 class manageAIObjects:
 
     def __init__(self, expireTime):
-        self.manageUpload = manageUploads()
         self.aaiobjects = defaultdict()
         self.expireTime=expireTime
         aithread = threading.Thread(target=self.cycleObjects, args=(1,))
         aithread.start()
 
-    def addAIObject (self,aiTrack):
-        if aiTrack.numberplate not in self.aaiobjects.keys():
-            self.aaiobjects[aiTrack.numberplate] = aiTrack
+    def addAIObject (self,aitrack):
+        if aitrack.numberplate not in self.aaiobjects.keys():
+            self.aaiobjects[aitrack.numberplate] = aitrack
         else:
-            self.aaiobjects[aiTrack.numberplate].increaseCount()
-            print ("increase count "+str(aiTrack.count))
+            self.aaiobjects[aitrack.numberplate].increaseCount()
+            print ("increase count " + f": {self.aaiobjects[aitrack.numberplate].count}" + f": {self.aaiobjects[aitrack.numberplate].numberplate}")
 
     def getAIObject (self,numberplate):
         return self.aaiobjects[numberplate]
 
     def update(self,aitrack):
         #print ("Update obj "+aitrack.numberplate)
+        print(aitrack.count)
         if (aitrack.count == 3):
             print("uploading: ", aitrack.numberplate)
-            self.manageUpload.upload(aitrack)
+            aitrack.upload()
+            del self.aaiobjects[aitrack.numberplate]
 
 
     def cycleObjects(self,name):
         while (True):
-            time.sleep(1)
+            time.sleep(0.1)
             currentTime = datetime.now()
             for aitrack in list(self.aaiobjects.values()):
                 self.update(aitrack)
                 age =  (currentTime - aitrack.createdTime).total_seconds()
                 if (self.expireTime <= age):
                     del self.aaiobjects[aitrack.numberplate]
-                    time.sleep(1)
 
 
-manage = manageAIObjects(5)
+config = configparser.ConfigParser()
+config.read("cfg/uploadSettings.ini")
+manage = manageAIObjects(int(config["Timeout"]["Key_time"]))
 
 

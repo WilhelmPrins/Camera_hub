@@ -41,7 +41,7 @@ def ocr_detect(numberplates, numberpl):
     if len(confidences) > 0:
         average = total / len(confidences) #Take longest average as correct result
     else:
-        average = 0
+        average = 0.0
     final_result = "".join(ids).upper()
     return final_result, average
 
@@ -74,9 +74,15 @@ try:
                     if len(n_images) > 0:
                         for plates in n_images:
                             result, average = ocr_detect(n_images, plates)
-                            newimage = aicollection.aiTrack(result, plates[0], car)
+                            newimage = aicollection.aiTrack(result, plates, car)
                             aicollection.manage.addAIObject(newimage)
                             print(result)
+                    # elif len(n_images) == 0:
+                    #     result = "#NONUMBERPLATE"
+                    #     average = 0.0
+                    #     temp_image = cv2.imread("numberplate.jpg")
+                    #     newimage = aicollection.aiTrack(result, temp_image, car)
+                    #     aicollection.manage.addAIObject(newimage)
 
                 cv2.imshow("Frame", frame)
                 if cv2.waitKey(1) & 0xFF == ord('q'):

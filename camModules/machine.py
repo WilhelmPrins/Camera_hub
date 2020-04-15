@@ -120,12 +120,9 @@ class Machine:
                         w_list.insert(corr_position, w)
                         h_list.insert(corr_position, h)
 
-                        if state == "big":
+                        if state == "big" or state == "number":
                             # image = cv2.imread(image, 1)
                             cropped_image = image[int(y):int(y)+int(h), int(x):int(x)+int(w)]
-                            cropped_images.insert(corr_position, cropped_image)
-                        elif state == "number":
-                            cropped_image = image[int(y):int(y) + int(h), int(x):int(x) + int(w)]
                             cropped_images.insert(corr_position, cropped_image)
 
             organised = sorted(x_values)
