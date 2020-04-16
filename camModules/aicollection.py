@@ -68,8 +68,33 @@ class manageAIObjects:
                     del self.aaiobjects[aitrack.numberplate]
 
 
+class Valid:
+    def __init__(self):
+        self.valid_types = config["valid"]["types"].split(",")
+        self.manage = manageAIObjects(int(config["Timeout"]["Key_time"]))
+        self.lengths = config["valid"]["lengths"].split(",")
+        self.if_else = int(config["valid"]["if_else"])
+
+    def validate(self, detection):
+        for i in self.valid_types:
+            if detection.numberplate[:2] == i:
+                position = self.valid_types.index(i)
+                if len(detection.numberplate) >= int(self.lengths[position]):
+                    print("Match")
+                    self.manage.addAIObject(detection)
+                    break
+                else:
+                    pass
+            elif i == self.valid_types[-1] and detection.numberplate[:2] != i:
+                if len(detection.numberplate) >= self.if_else:
+                    print("Match, unique")
+                    self.manage.addAIObject(detection)
+
+
+
+
 config = configparser.ConfigParser()
 config.read("cfg/uploadSettings.ini")
-manage = manageAIObjects(int(config["Timeout"]["Key_time"]))
+valid = Valid()
 
 

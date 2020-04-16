@@ -75,7 +75,7 @@ try:
                         for plates in n_images:
                             result, average = ocr_detect(n_images, plates)
                             newimage = aicollection.aiTrack(result, plates, car)
-                            aicollection.manage.addAIObject(newimage)
+                            aicollection.valid.validate(newimage)
                             print(result)
                     # elif len(n_images) == 0:
                     #     result = "#NONUMBERPLATE"
