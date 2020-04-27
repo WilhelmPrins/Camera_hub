@@ -6,6 +6,8 @@ import threading
 import upload
 import configparser
 import xml.etree.ElementTree as ET
+import logging
+import re
 
 class aiTrack:
 
@@ -21,12 +23,14 @@ class aiTrack:
         self.createdTime = datetime.now()
 
     def upload(self):
-        print ("aitrack uploaded")
+        logging.info ("ready to uploaded")
         data = upload.UploadMetaData(config["Upload"]["Camera_key"])
         code, meta = data.send(self.numberplate, self.picVehicle, self.picNumberplate)
-        print(f"{self.numberplate} uploaded. Code {code}")
-        #print(meta)
 
+        if (code==200):  logging.info ("Uploaded, Success")
+        else:  logging.info ("Uploaded, Failed with code: "+str(self.numberplate))
+        if (code==504):
+            logging.error("Gateway Timeout - please investigate. Error "+str(code))
 
 
 
@@ -43,16 +47,17 @@ class manageAIObjects:
             self.aaiobjects[aitrack.numberplate] = aitrack
         else:
             self.aaiobjects[aitrack.numberplate].increaseCount()
-            print ("increase count " + f": {self.aaiobjects[aitrack.numberplate].count}" + f": {self.aaiobjects[aitrack.numberplate].numberplate}")
+            logging.info ("increase count " + f": {self.aaiobjects[aitrack.numberplate].count}" + f": {self.aaiobjects[aitrack.numberplate].numberplate}")
 
     def getAIObject (self,numberplate):
         return self.aaiobjects[numberplate]
 
     def update(self,aitrack):
         #print ("Update obj "+aitrack.numberplate)
-        print(aitrack.count)
-        if (aitrack.count == 3):
-            print("uploading: ", aitrack.numberplate)
+        #print("Detection count "+aitrack.count+" "+aitrack.numberplate)
+
+
+        if (aitrack.count >=  3):
             aitrack.upload()
             del self.aaiobjects[aitrack.numberplate]
 
@@ -68,33 +73,39 @@ class manageAIObjects:
                     del self.aaiobjects[aitrack.numberplate]
 
 
+def detection(args):
+    pass
+
+
 class Valid:
     def __init__(self):
-        self.valid_types = config["valid"]["types"].split(",")
+        self.valid_types = config["valid"]["types"].split(" ")
+        self.valid_regex = config["valid"]["regex"].split(" ")
+        self.regex_else = config["valid"]["else_regex"]
         self.manage = manageAIObjects(int(config["Timeout"]["Key_time"]))
-        self.lengths = config["valid"]["lengths"].split(",")
-        self.if_else = int(config["valid"]["if_else"])
+
+
+    def regcheck(self,reg, plate):
+        result = re.fullmatch(reg, plate)
+        if (result): return True
+        else: return False
+
 
     def validate(self, detection):
-        for i in self.valid_types:
-            if detection.numberplate[:2] == i:
-                position = self.valid_types.index(i)
-                if len(detection.numberplate) >= int(self.lengths[position]):
-                    print("Match")
-                    self.manage.addAIObject(detection)
-                    break
-                else:
-                    pass
-            elif i == self.valid_types[-1] and detection.numberplate[:2] != i:
-                if len(detection.numberplate) >= self.if_else:
-                    print("Match, unique")
-                    self.manage.addAIObject(detection)
-
-
+        matched = False
+        for type in self.valid_types:
+            if detection.numberplate[:len(type)] == type:
+                position = self.valid_types.index(type)
+                return self.regcheck(self.valid_regex[position],detection.numberplate)
+        if (matched==False):
+            return self.regcheck(self.regex_else, detection.numberplate)
 
 
 config = configparser.ConfigParser()
 config.read("cfg/uploadSettings.ini")
+
+#ai = aiTrack("C123412","","")
 valid = Valid()
+#print(valid.validate(ai))
 
 

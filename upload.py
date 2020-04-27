@@ -7,41 +7,26 @@ import xml.etree.ElementTree as ET
 import numpy as np
 import cv2
 from PIL import Image
+import logging
 
 class UploadMetaData:
 
     def __init__(self, camera_key):
         self.camera_key = camera_key
+        logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
+
     def send(self, numberplate, vehicle_image, numberplate_image):
-        # cv2.imwrite(f"{numberplate}.jpg", numberplate_image)
-        # cv2.imwrite(f"{numberplate}vehicle.jpg", vehicle_image)
 
         is_success, vehicle_buf_arr = cv2.imencode(".jpg", vehicle_image)
         is_success, num_buf_arr = cv2.imencode(".jpg", numberplate_image)
         byte_vehicle = vehicle_buf_arr.tobytes()
         byte_num = num_buf_arr.tobytes()
 
-        # fvehicle_image = BytesIO()
-        # fvehicle_image.write(vehicle_image)
-        # fvehicle_image.seek(0)
-        #
-        # fnumberplate_image = BytesIO()
-        # fnumberplate_image.write(numberplate_image)
-        # fnumberplate_image.seek(0)
 
         metainfo = str(open('anpr.xml', 'r').read())
         metainfo = metainfo.replace("##NUMBERPLATE##", numberplate)
         metainfo = metainfo.replace("##DATETIME##", str(datetime.now()))
 
-
-        # to be replaced - not good code
-        # tree = ET.parse("anpr.xml")
-        # root = tree.getroot()
-        # root[4].text = str(datetime.now())
-        # root[8][0] = str(numberplate)
-        # tree.write("ianpr.xml")
-        # metainfo = str(open('anpr.xml', 'r').read())
-        #####
 
         fanpr = StringIO()
         fanpr.write(metainfo)
@@ -59,6 +44,10 @@ class UploadMetaData:
         fanpr.close()
         # fnumberplate_image.close()
         # fvehicle_image.close()
+
+        if (response.status_code==200): logging.info ("Uploaded done: "+numberplate)
+        else: logging.error ("Uploaded, Failed with error "+response.status_code)
+
         return response.status_code, metainfo
 
 

@@ -4,16 +4,12 @@ import cv2
 import traceback
 import numpy as np
 
-
 class Machine:
 
     def __init__(self, link):
         self.link = link
-
-    def settings(self):
-        config = configparser.ConfigParser()
-        config.read(self.link)
-        return config
+        self.config = configparser.ConfigParser()
+        self.config.read(self.link)
 
     def get_output_layers(self, net):
         layer_names = net.getLayerNames()
@@ -42,10 +38,30 @@ class Machine:
                     pass
         return x_list, width, identified_ids, cropped_images, y_list, h_list
 
-    def detect(self, image, state):
+    def loadState(self, state):
+        self.state = state
+        if state == "big":
+            self.weights = self.config["AI"]["Weights_big"]
+            self.configuration = self.config["AI"]["Config_big"]
+            self.net = cv2.dnn.readNet(self.weights, self.configuration)
 
-        config = self.settings()
+            with open(self.config['AI']['Classes_big'], 'r') as f:
+                self.classes = [line.strip() for line in f.readlines()]
+        elif state == "number":
+            self.weights = self.config["AI"]["Weights_number"]
+            self.configuration = self.config["AI"]["Config_number"]
+            self.net = cv2.dnn.readNet(self.weights, self.configuration)
+            # image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            with open(self.config['AI']['Classes_number'], 'r') as f:
+                self.classes = [line.strip() for line in f.readlines()]
+        elif state == "ocr":
+            self.weights = self.config["AI"]["Weights_ocr"]
+            self.configuration = self.config["AI"]["Config_ocr"]
+            self.net = cv2.dnn.readNet(self.weights, self.configuration)
+            with open(self.config['AI']['Classes_ocr'], 'r') as f:
+                self.classes = [line.strip() for line in f.readlines()]
 
+    def detect(self, image):
         try:
             Width = image.shape[1]
             Height = image.shape[0]
@@ -53,39 +69,23 @@ class Machine:
             logging.exception(e)
             return [], []
         try:
-
-            classes = []
-            config = self.settings()
-            logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
-
-            if state == "big":
-                weights = config["AI"]["Weights_big"]
-                configuration = config["AI"]["Config_big"]
-                net = cv2.dnn.readNet(weights, configuration)
+            if self.state == "big":
                 image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-                with open(config['AI']['Classes_big'], 'r') as f:
-                    classes = [line.strip() for line in f.readlines()]
-            elif state == "number":
-                weights = config["AI"]["Weights_number"]
-                configuration = config["AI"]["Config_number"]
-                net = cv2.dnn.readNet(weights, configuration)
-                #image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-                with open(config['AI']['Classes_number'], 'r') as f:
-                    classes = [line.strip() for line in f.readlines()]
-            elif state == "ocr":
-                weights = config["AI"]["Weights_ocr"]
-                configuration = config["AI"]["Config_ocr"]
-                net = cv2.dnn.readNet(weights, configuration)
-                with open(config['AI']['Classes_ocr'], 'r') as f:
-                    classes = [line.strip() for line in f.readlines()]
 
+            logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
             scale = 0.00392
+            #if np.all(np.array(image.shape)):
+                #return [], [], [], [], [], []
+            # Sometime the image are broken
+            try:
+                blob = cv2.dnn.blobFromImage(image, scale, (416,416), (0,0,0), True, crop=False)
+            except Exception as e:
+                #logging.exception("bad quality image ")
+                return  [], [], [], [], [], []
 
-            blob = cv2.dnn.blobFromImage(image, scale, (416,416), (0,0,0), True, crop=False)
-            net.setInput(blob)
+            self.net.setInput(blob)
 
-            outs = net.forward(self.get_output_layers(net))
-
+            outs = self.net.forward(self.get_output_layers(self.net))
             class_ids = []
             confidences = []
             x_values = []
@@ -93,17 +93,16 @@ class Machine:
             y_list = []
             w_list = []
             h_list = []
-            conf_threshold = 0.5
-            nms_threshold = 0.4
-            firstrun = True
             cropped_images = []
+
 
             for out in outs:
                 for detection in out:
                     scores = detection[5:]
                     class_id = np.argmax(scores)
                     confidence = scores[class_id]
-                    if confidence > float(config["VIDEO"]["confidence"]):
+                    #if (confidence>0): logging.info (str(class_id)+" "+str(confidence))
+                    if confidence > float(self.config["VIDEO"]["confidence"]):
                         center_x = int(detection[0] * Width)
                         center_y = int(detection[1] * Height)
                         w = int(detection[2] * Width)
@@ -114,13 +113,13 @@ class Machine:
                         x_values.append(x)
                         organised = sorted(x_values)
                         corr_position = organised.index(x)
-                        class_ids.insert(corr_position, classes[class_id])
+                        class_ids.insert(corr_position, self.classes[class_id])
                         confidences.insert(corr_position, float(confidence))
                         y_list.insert(corr_position, y)
                         w_list.insert(corr_position, w)
                         h_list.insert(corr_position, h)
 
-                        if state == "big" or state == "number":
+                        if self.state == "big" or self.state == "number":
                             # image = cv2.imread(image, 1)
                             cropped_image = image[int(y):int(y)+int(h), int(x):int(x)+int(w)]
                             cropped_images.insert(corr_position, cropped_image)
@@ -129,12 +128,12 @@ class Machine:
             organised, w_list, class_ids, cropped_images, y_list, h_list = self.filterdub(w_list, organised,
                                                                                           cropped_images,
                                                                                           class_ids,
-                                                                                          state,
+                                                                                          self.state,
                                                                                           y_list,
                                                                                           h_list)
             if len(cropped_images) > 0:
                 return cropped_images, class_ids, organised, w_list, y_list, h_list
-            elif state == "ocr" and type(class_ids) != "NoneType":
+            elif self.state == "ocr" and type(class_ids) != "NoneType":
                 return [], class_ids, confidences, [], [], []
             else:
                 return [], [], [], [], [], []
